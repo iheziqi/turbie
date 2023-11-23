@@ -1,0 +1,25 @@
+{
+	"name": "turbie-project",
+	"version": "1.0.0",
+	"description": "A project to learn how to write a frontend framework",
+	"private": true,
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"serve:examples": "npx http-server . -o ./examples/"
+	},
+	"workspaces": [
+		"packages/runtime",
+		"packages/compiler",
+		"packages/loader"
+	],
+	"keywords": [
+		"frontend",
+		"framework",
+		"learning",
+		"web",
+		"development"
+	],
+	"author": "Ziqi He",
+	"license": "ISC"
+}
