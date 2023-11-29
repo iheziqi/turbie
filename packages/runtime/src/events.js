@@ -29,3 +29,17 @@ export function addEventListeners(listeners = {}, el) {
 
 	return addedListeners;
 }
+
+/**
+ * Removes the event listeners from an event target.
+ *
+ * @param {Object} listeners the event listeners to remove
+ * @param {EventTarget} el the element to remove the event listeners from
+ */
+export function removeEventListeners(listeners = {}, el) {
+	Object.entries(listeners).forEach(([eventName, handler]) => {
+		// The event listener to be removed is identified using a combination
+		// of the event type, the event listener function itself.
+		el.removeEventListener(eventName, handler);
+	});
+}
