@@ -1,6 +1,6 @@
 {
 	"name": "turbie",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "A homemade frontend framework for learning purpose.",
 	"main": "dist/turbie.js",
 	"files": [

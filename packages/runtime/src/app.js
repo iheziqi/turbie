@@ -48,7 +48,7 @@ export function createApp({ state, view, reducers = {} }) {
 			destroyDOM(vdom);
 		}
 
-		vdom = view(state);
+		vdom = view(state, emit);
 		mountDOM(vdom, parentEl);
 	}
 
@@ -59,9 +59,11 @@ export function createApp({ state, view, reducers = {} }) {
 		 * @param {Element} _parentEl the host element to mount the virtual DOM node to
 		 * @returns {object} the application object
 		 */
-		mountDOM(_parentEl) {
+		mount(_parentEl) {
 			parentEl = _parentEl;
 			renderApp();
+
+			return this;
 		},
 
 		/**
