@@ -46,7 +46,7 @@ function setClass(el, className) {
 	// 	type: DOM_TYPES.ELEMENT,
 	// 	tag: 'div',
 	// 	props: {
-	// 		class: ['foo', 'bar', 'baz'],
+	// 		class: 'foo, bar, baz',
 	// 	},
 	// };
 	el.className = '';
@@ -55,7 +55,7 @@ function setClass(el, className) {
 		el.className = className;
 	}
 
-	// div.classList.add('foo', 'bar', 'baz')
+	// div.classList.add('foo', 'bar', 'baz') -> <div class="foo bar baz"></div>
 	if (Array.isArray(className)) {
 		el.classList.add(...className);
 	}
@@ -72,9 +72,11 @@ export function setAttribute(el, name, value) {
 	if (value == null) {
 		removeAttribute(el, name);
 	} else if (name.startsWith('data-')) {
-    // If the attribute is the data-* custom data attributes
+		// If the attribute is the data-* custom data attributes
+		// https://developer.mozilla.org/en-US/docs/Web/API/Element/setAttribute
 		el.setAttribute(name, value);
 	} else {
+		// Other attributes like 'ariaXXX', 'id', 'innerHTML' ... can be set using JS object notation.
 		el[name] = value;
 	}
 }
@@ -87,8 +89,8 @@ export function setAttribute(el, name, value) {
  */
 export function removeAttribute(el, name) {
 	el[name] = null;
-	// The Element method removeAttribute() removes the attribute 
-  // with the specified name from the element.
+	// The Element method removeAttribute() removes the attribute
+	// with the specified name from the element.
 	el.removeAttribute(name);
 }
 
