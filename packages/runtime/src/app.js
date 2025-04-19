@@ -1,6 +1,7 @@
 import { destroyDOM } from './destroy-dom';
 import { Dispatcher } from './dispatcher';
 import { mountDOM } from './mount-dom';
+import { patchDOM } from './patch-dom';
 
 /**
  * Creates an application with the given top-level view, initial state and reducers.
@@ -13,6 +14,7 @@ import { mountDOM } from './mount-dom';
 export function createApp({ state, view, reducers = {} }) {
 	let parentEl = null;
 	let vdom = null;
+	let isMounted = false;
 
 	// Instance of the Dispatcher
 	const dispatcher = new Dispatcher();
@@ -37,31 +39,30 @@ export function createApp({ state, view, reducers = {} }) {
 	}
 
 	/**
-	 * Renders the application, by first destroying the previous DOM —if any— and
-	 * then mounting the new view.
-	 *
-	 * In the next version, a _reconciliation algorithm_ will be used to update the
-	 * DOM instead of destroying and mounting the whole view.
+	 * Renders the application by patching DOM every time the state changes.
 	 */
 	function renderApp() {
-		if (vdom) {
-			destroyDOM(vdom);
-		}
-
-		vdom = view(state, emit);
-		mountDOM(vdom, parentEl);
+		const newVdom = view(state, emit);
+		vdom = patchDOM(vdom, newVdom, parentEl);
 	}
 
 	return {
 		/**
 		 * Mounts the application to the given host element.
+		 * Mounting happens only once.
 		 *
 		 * @param {Element} _parentEl the host element to mount the virtual DOM node to
 		 * @returns {object} the application object
 		 */
 		mount(_parentEl) {
+			if (isMounted) {
+				throw new Error('The application has already been mounted!');
+			}
 			parentEl = _parentEl;
-			renderApp();
+			vdom = view(state, emit);
+			mountDOM(vdom, parentEl);
+
+			isMounted = true;
 
 			return this;
 		},
@@ -74,6 +75,8 @@ export function createApp({ state, view, reducers = {} }) {
 			destroyDOM(vdom);
 			vdom = null;
 			subscriptions.forEach((unsubscribe) => unsubscribe());
+
+			isMounted = false;
 		},
 
 		/**
