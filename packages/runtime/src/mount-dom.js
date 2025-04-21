@@ -3,23 +3,53 @@ import { addEventListeners } from './events';
 import { setAttributes } from './attributes';
 
 /**
+ * Inserts an element into the given parent element at the given index.
+ * @param {HTMLElement} el
+ * @param {HTMLElement} parentEl
+ * @param {number} index
+ */
+function insert(el, parentEl, index) {
+	// If index is null or undefined, simply append.
+	// Note the usage of == instead of ===.
+	if (index == null) {
+		parentEl.append(el);
+		return;
+	}
+
+	if (index < 0) {
+		throw new Error(`Index must be a positive integer, but got ${index}`);
+	}
+
+	const children = parentEl.childNodes;
+
+	if (index >= children.length) {
+		// if the index is greater than the children length, just append it.
+		parentEl.append(el);
+	} else {
+		// otherwise node is inserted at the given index.
+		parentEl.insertBefore(el, children[index]);
+	}
+}
+
+/**
  * Creates the DOM nodes for a virtual DOM tree, mounts them in the DOM, and
  * modifies the vdom tree to include the corresponding DOM nodes and event listeners.
  *
  * @param {Object} vdom the virtual DOM node to mount
  * @param {HTMLElement} parentEl the host element to mount the virtual DOM node to
+ * @param {number} index the index at which the node is inserted into the parent element.
  */
 
-export function mountDOM(vdom, parentEl) {
+export function mountDOM(vdom, parentEl, index) {
 	switch (vdom.type) {
 		case DOM_TYPES.TEXT:
-			createTextNode(vdom, parentEl);
+			createTextNode(vdom, parentEl, index);
 			break;
 		case DOM_TYPES.ELEMENT:
-			createElementNode(vdom, parentEl);
+			createElementNode(vdom, parentEl, index);
 			break;
 		case DOM_TYPES.FRAGMENT:
-			createFragmentNodes(vdom, parentEl);
+			createFragmentNodes(vdom, parentEl, index);
 			break;
 		default:
 			throw new Error(`Can't mount DOM of type: ${vdom.type}`);
@@ -37,9 +67,10 @@ export function mountDOM(vdom, parentEl) {
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Text}
  *
  * @param {Object} vdom the virtual DOM node of type "text"
- * @param {Element} parentEl the host element to mount the virtual DOM node to
+ * @param {HTMLElement} parentEl the host element to mount the virtual DOM node to
+ * @param {number} index
  */
-function createTextNode(vdom, parentEl) {
+function createTextNode(vdom, parentEl, index) {
 	const { value } = vdom;
 
 	const textNode = document.createTextNode(value);
@@ -47,7 +78,7 @@ function createTextNode(vdom, parentEl) {
 	// This reference is used by the reconciliation algorithm.
 	vdom.el = textNode;
 
-	parentEl.append(textNode);
+	insert(textNode, parentEl, index);
 }
 
 /**
@@ -61,15 +92,18 @@ function createTextNode(vdom, parentEl) {
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DocumentFragment}
  *
  * @param {Object} vdom the virtual DOM node of type "fragment"
- * @param {Element} parentEl the host element to mount the virtual DOM node to
+ * @param {HTMLElement} parentEl the host element to mount the virtual DOM node to
+ * @param {number} index
  */
-function createFragmentNodes(vdom, parentEl) {
+function createFragmentNodes(vdom, parentEl, index) {
 	const { children } = vdom;
 	// el saves a reference to the real DOM node in the virtual node.
 	// This reference is used by the reconciliation algorithm.
 	vdom.el = parentEl;
 
-	children.forEach((child) => mountDOM(child, parentEl));
+	children.forEach((child, i) =>
+		mountDOM(child, parentEl, index ? index + i : null)
+	);
 }
 
 /**
@@ -80,9 +114,10 @@ function createFragmentNodes(vdom, parentEl) {
  * `listeners` property.
  *
  * @param {Object} vdom the virtual DOM node of type "element"
- * @param {Element} parentEl the host element to mount the virtual DOM node to
+ * @param {HTMLElement} parentEl the host element to mount the virtual DOM node to
+ * @param {number} index
  */
-function createElementNode(vdom, parentEl) {
+function createElementNode(vdom, parentEl, index) {
 	// The virtual DOM representation of a node like this:
 	// {
 	// 	type: DOM_TYPES.ELEMENT,
@@ -125,8 +160,8 @@ function createElementNode(vdom, parentEl) {
 	// 4. Mount the children, recursively, into the element node
 	children.forEach((child) => mountDOM(child, element));
 
-	// 5. Append the element node to the parent element.
-	parentEl.append(element);
+	// 5. Insert the element node to the parent element.
+	insert(element, parentEl, index);
 }
 
 /**
