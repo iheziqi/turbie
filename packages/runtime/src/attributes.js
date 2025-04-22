@@ -64,7 +64,7 @@ function setClass(el, className) {
 /**
  * Sets the attribute on the element.
  *
- * @param {Element} el The element to add the attribute to
+ * @param {HTMLElement} el The element to add the attribute to
  * @param {String} name The name of the attribute
  * @param {(String|Number|Null)} value The value of the attribute
  */
