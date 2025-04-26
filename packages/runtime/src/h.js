@@ -64,3 +64,27 @@ export function hFragment(vNodes) {
 		children: mapTextNodes(withoutNulls(vNodes)),
 	};
 }
+
+/**
+ * Extracts the children of a virtual dom.
+ * Recursively extracting all children if the vdom type is a fragment.
+ * @param {object} vdom
+ * @returns {object[]} children of the given vdom.
+ */
+export function extractChildren(vdom) {
+	if (vdom.children == null) {
+		return [];
+	}
+
+	const children = [];
+
+	for (const child of vdom.children) {
+		if (child.type === DOM_TYPES.FRAGMENT) {
+			children.push(...extractChildren(child));
+		} else {
+			children.push(child);
+		}
+	}
+
+	return children;
+}
