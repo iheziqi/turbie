@@ -1,39 +1,111 @@
 import { withoutNulls } from './utils/arrays';
+import { assert } from './utils/assert';
 
 export const DOM_TYPES = {
-	TEXT: 'text', // They represent text content.
-	ELEMENT: 'element', // The most common type of node; they represent HTML elements that have a tag name.
-	FRAGMENT: 'fragment', // They represent a collection of nodes that don't have a parent node.
+	TEXT: 'text',
+	ELEMENT: 'element',
+	FRAGMENT: 'fragment',
 };
 
 /**
- * Creates a virtual DOM element.
- * h() is short for hyperscript, or a script that creates hypertext.
+ * A virtual node is an object representing a DOM element.
+ * The virtual node can be a text node, an element node or a fragment node.
+ * @typedef VNode
+ * @type {TextVNode|ElementVNode|FragmentVNode}
+ */
+
+/**
+ * @typedef ElementVNode
+ * @type {object}
+ * @property {string} tag - The tag of the element.
+ * @property {string} type - The type of the virtual node = 'element'.
+ * @property {ElementVNodeProps} props - The attributes of the element.
+ * @property {VNode[]} children - The children of the element.
+ * @property {HTMLElement} [el] - The mounted element.
+ * @property {Object.<string,Function>} [listeners] - The event listeners added to the element.
+ */
+
+/**
+ * @typedef ElementVNodeProps
+ * @type {object}
+ * @property {Object.<string,Function>} [on] - The event listeners to add to the element.
+ * @property {(string|string[])} [class] - The class or classes to add to the element.
+ * @property {Object.<string,string>} [style] - The CSS properties to add to the element.
+ */
+
+/**
+ * Hypertext function: creates a virtual node representing an element with
+ * the passed in tag.
  *
- * @param {string} tag - The HTML tag of the element.
- * @param {Object} [props={}] - The properties or attributes of the element.
- * @param {Array} [children=[]] - The child elements or text nodes.
+ * The props are added to the element as attributes.
+ * There are some special props:
+ * - `on`: an object containing event listeners to add to the element
+ * - `class`: a string or array of strings to add to the element's class list
+ * - `style`: an object containing CSS properties to add to the element's style
  *
- * @returns {Object} A virtual DOM element representation.
+ * The children are added to the element as child nodes.
+ * If a child is a string, it is converted to a text node using `hString()`.
  *
+ * @param {string} tag the tag name of the element
+ * @param {object} props the props to add to the element
+ * @param {array} children the children to add to the element
+ * @returns {ElementVNode} the virtual node
  */
 export function h(tag, props = {}, children = []) {
 	return {
 		tag,
 		props,
-		// Child nodes might come as null, so needed to filter them out.
-		// If some child nodes inside the children array are strings, it is needed to transform
-		// them into virtual nodes of type DOM_TYPES.TEXT.
 		children: mapTextNodes(withoutNulls(children)),
 		type: DOM_TYPES.ELEMENT,
 	};
 }
 
 /**
- * Map strings in children array to text nodes.
- * @param {Array} children - The children array of a element node.
- * @returns {Array} The children array with strings replaced by text nodes.
+ * @typedef TextVNode
+ * @type {object}
+ * @property {string} type - The type of the virtual node = 'text'.
+ * @property {string} value - The text of the text node.
+ * @property {Text} [el] - The mounted element.
  */
+
+/**
+ * Creates a text virtual node.
+ *
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Text}
+ *
+ * @param {string} str the text to add to the text node
+ * @returns {TextVNode} the virtual node
+ */
+export function hString(str) {
+	return { type: DOM_TYPES.TEXT, value: str };
+}
+
+/**
+ * @typedef FragmentVNode
+ * @type {object}
+ * @property {string} type - The type of the virtual node = 'fragment'.
+ * @property {VNode[]} children - The children of the fragment.
+ * @property {DocumentFragment} [el] - The mounted element, typically the parent of the fragment.
+ * @property {FragmentVNode} [parentFragment] - The parent fragment, if any.
+ */
+
+/**
+ * Wraps the virtual nodes in a fragment.
+ *
+ * If a child is a string, it is converted to a text node using `hString()`.
+ *
+ * @param {array} vNodes the virtual nodes to wrap in a fragment
+ * @returns {FragmentVNode} the virtual node
+ */
+export function hFragment(vNodes) {
+	assert(Array.isArray(vNodes), 'hFragment expects an array of vNodes');
+
+	return {
+		type: DOM_TYPES.FRAGMENT,
+		children: mapTextNodes(withoutNulls(vNodes)),
+	};
+}
+
 function mapTextNodes(children) {
 	return children.map((child) =>
 		typeof child === 'string' ? hString(child) : child
@@ -41,35 +113,12 @@ function mapTextNodes(children) {
 }
 
 /**
- * Create text node from given string.
- * @param {String} str
- * @returns The text node created from the given string.
- */
-export function hString(str) {
-	return { type: DOM_TYPES.TEXT, value: str };
-}
-
-/**
- * Creates a virtual DOM fragment.
+ * Extracts the children of a virtual node. If one of the children is a
+ * fragment, its children are extracted and added to the list of children.
+ * In other words, the fragments are replaced by their children.
  *
- * @param {Array} vNodes - An array of virtual DOM nodes or text nodes to be included in the fragment.
- * @returns {Object} A virtual DOM fragment representation.
- */
-export function hFragment(vNodes) {
-	// A fragment is type of virtual node used to group multiple nodes that need to be attached
-	// to the DOM together, but don't have a parent node in the DOM.
-	// Fragments are just an array of child nodes.
-	return {
-		type: DOM_TYPES.FRAGMENT,
-		children: mapTextNodes(withoutNulls(vNodes)),
-	};
-}
-
-/**
- * Extracts the children of a virtual dom.
- * Recursively extracting all children if the vdom type is a fragment.
- * @param {object} vdom
- * @returns {object[]} children of the given vdom.
+ * @param {FragmentVNode} vdom
+ * @returns {VNode[]} the children of the virtual node
  */
 export function extractChildren(vdom) {
 	if (vdom.children == null) {
@@ -80,7 +129,7 @@ export function extractChildren(vdom) {
 
 	for (const child of vdom.children) {
 		if (child.type === DOM_TYPES.FRAGMENT) {
-			children.push(...extractChildren(child));
+			children.push(...extractChildren(child, children));
 		} else {
 			children.push(child);
 		}
