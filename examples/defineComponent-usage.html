@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+		<script type="module">
+			// Add the following two lines in index.js to make this example work!
+			// because by default the production bundle doesn't expose these two functions.
+			// export { mountDOM } from './mount-dom';
+			// export { destroyDOM } from './destroy-dom';
+			import {
+				createApp,
+				h,
+				hString,
+				hFragment,
+				mountDOM,
+				destroyDOM,
+			} from '../packages/runtime/dist/turbie.js';
+
+			export function defineComponent({ render }) {
+				class Component {
+					#isMounted = false;
+					#vdom = null;
+					#hostEl = null;
+
+					render() {
+						return render();
+					}
+
+					mount(hostEl, index = null) {
+						if (this.#isMounted) {
+							throw new Error('Component is already mounted!');
+						}
+
+						this.#vdom = this.render();
+						mountDOM(this.#vdom, hostEl, index);
+
+						this.#hostEl = hostEl;
+						this.#isMounted = true;
+					}
+
+					unmount() {
+						if (!this.#isMounted) {
+							throw new Error('Component is not mounted yet!');
+						}
+						destroyDOM(this.#vdom);
+
+						this.#vdom = null;
+						this.#hostEl = null;
+						this.mountDOM = false;
+					}
+				}
+
+				return Component;
+			}
+
+			function renderMessage() {
+				return hFragment([
+					h('h1', {}, [hString('Important news!')]),
+					h('p', {}, [hString('I made myself coffee!')]),
+					h(
+						'button',
+						{
+							on: {
+								click: () => {
+									console.log('Good for you');
+								},
+							},
+						},
+						[hString('Say congrats!')]
+					),
+				]);
+			}
+
+			const Coffee = new defineComponent({ render: renderMessage });
+			const coffee = new Coffee({ render: renderMessage });
+			coffee.mount(document.getElementById('app'));
+		</script>
+
+		<title>defineComponent Usage</title>
+	</head>
+	<body>
+		<div id="app"></div>
+	</body>
+</html>
