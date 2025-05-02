@@ -74,7 +74,7 @@
 				]);
 			}
 
-			const Coffee = new defineComponent({ render: renderMessage });
+			const Coffee = defineComponent({ render: renderMessage });
 			const coffee = new Coffee({ render: renderMessage });
 			coffee.mount(document.getElementById('app'));
 		</script>
