@@ -34,7 +34,7 @@ export function patchDOM(oldVdom, newVdom, parentEl, hostComponent = null) {
 	if (!areNodesEqual(oldVdom, newVdom)) {
 		const index = findIndexInParent(parentEl, oldVdom.el);
 		destroyDOM(oldVdom);
-		mountDOM(newVdom, parentEl, index);
+		mountDOM(newVdom, parentEl, index, hostComponent);
 
 		return newVdom;
 	}
@@ -48,7 +48,7 @@ export function patchDOM(oldVdom, newVdom, parentEl, hostComponent = null) {
 		}
 
 		case DOM_TYPES.ELEMENT: {
-			patchElement(oldVdom, newVdom);
+			patchElement(oldVdom, newVdom, hostComponent);
 			break;
 		}
 	}
@@ -102,8 +102,9 @@ function patchText(oldVdom, newVdom) {
  *
  * @param {import('./h').ElementVNode} oldVdom the old virtual node
  * @param {import('./h').ElementVNode} newVdom the new virtual node
+ * @param {import('./component').Component} [hostComponent] The component that the listeners are added to
  */
-function patchElement(oldVdom, newVdom) {
+function patchElement(oldVdom, newVdom, hostComponent) {
 	const el = oldVdom.el;
 	const {
 		class: oldClass,
@@ -122,7 +123,13 @@ function patchElement(oldVdom, newVdom) {
 	patchAttrs(el, oldAttrs, newAttrs);
 	patchClasses(el, oldClass, newClass);
 	patchStyles(el, oldStyle, newStyle);
-	newVdom.listeners = patchEvents(el, oldListeners, oldEvents, newEvents);
+	newVdom.listeners = patchEvents(
+		el,
+		oldListeners,
+		oldEvents,
+		newEvents,
+		hostComponent
+	);
 }
 
 /**
@@ -218,9 +225,16 @@ function patchStyles(el, oldStyle = {}, newStyle = {}) {
  * @param {Object.<string, Function>} oldListeners the listeners added to the DOM
  * @param {Object.<string, Function>} oldEvents the events of the old virtual node
  * @param {Object.<string, Function>} newEvents the events of the new virtual node
+ * @param {import('./component').Component} [hostComponent] The component that the listeners are added to
  * @returns {Object.<string, Function>} the listeners that were added
  */
-function patchEvents(el, oldListeners = {}, oldEvents = {}, newEvents = {}) {
+function patchEvents(
+	el,
+	oldListeners = {},
+	oldEvents = {},
+	newEvents = {},
+	hostComponent
+) {
 	const { removed, added, updated } = objectsDiff(oldEvents, newEvents);
 
 	for (const eventName of removed.concat(updated)) {
@@ -230,7 +244,12 @@ function patchEvents(el, oldListeners = {}, oldEvents = {}, newEvents = {}) {
 	const addedListeners = {};
 
 	for (const eventName of added.concat(updated)) {
-		const listener = addEventListener(eventName, newEvents[eventName], el);
+		const listener = addEventListener(
+			eventName,
+			newEvents[eventName],
+			el,
+			hostComponent
+		);
 		addedListeners[eventName] = listener;
 	}
 

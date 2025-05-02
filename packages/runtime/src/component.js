@@ -2,6 +2,7 @@ import { mountDOM } from './mount-dom';
 import { destroyDOM } from './destroy-dom';
 import { patchDOM } from './patch-dom';
 import { DOM_TYPES, extractChildren } from './h';
+import { hasOwnProperty } from './utils/objects';
 
 /**
  * @typedef Component
@@ -28,7 +29,7 @@ import { DOM_TYPES, extractChildren } from './h';
  * @returns {Component}
  */
 
-export function defineComponent({ render, state }) {
+export function defineComponent({ render, state, ...methods }) {
 	class Component {
 		#isMounted = false;
 		/**
@@ -85,7 +86,7 @@ export function defineComponent({ render, state }) {
 			}
 
 			this.#vdom = this.render();
-			mountDOM(this.#vdom, hostEl, index);
+			mountDOM(this.#vdom, hostEl, index, this);
 
 			this.#hostEl = hostEl;
 			this.#isMounted = true;
@@ -111,6 +112,16 @@ export function defineComponent({ render, state }) {
 			// To use the component's offset here, the component instance "this" is needed to be passed
 			this.#vdom = patchDOM(this.#vdom, vdom, this.#hostEl, this);
 		}
+	}
+
+	for (const methodName in methods) {
+		if (hasOwnProperty(Component, methodName)) {
+			throw new Error(
+				`Method "${methodName}()" already exists in the component.`
+			);
+		}
+
+		Component.prototype[methodName] = methods[methodName];
 	}
 
 	return Component;

@@ -38,18 +38,19 @@ function insert(el, parentEl, index) {
  * @param {Object} vdom the virtual DOM node to mount
  * @param {HTMLElement} parentEl the host element to mount the virtual DOM node to
  * @param {number} index the index at which the node is inserted into the parent element.
+ * @param {import('./component').Component} [hostComponent] The component that the listeners are added to
  */
 
-export function mountDOM(vdom, parentEl, index) {
+export function mountDOM(vdom, parentEl, index, hostComponent = null) {
 	switch (vdom.type) {
 		case DOM_TYPES.TEXT:
 			createTextNode(vdom, parentEl, index);
 			break;
 		case DOM_TYPES.ELEMENT:
-			createElementNode(vdom, parentEl, index);
+			createElementNode(vdom, parentEl, index, hostComponent);
 			break;
 		case DOM_TYPES.FRAGMENT:
-			createFragmentNodes(vdom, parentEl, index);
+			createFragmentNodes(vdom, parentEl, index, hostComponent);
 			break;
 		default:
 			throw new Error(`Can't mount DOM of type: ${vdom.type}`);
@@ -94,15 +95,16 @@ function createTextNode(vdom, parentEl, index) {
  * @param {Object} vdom the virtual DOM node of type "fragment"
  * @param {HTMLElement} parentEl the host element to mount the virtual DOM node to
  * @param {number} index
+ * @param {import('./component').Component} [hostComponent] The component that the listeners are added to
  */
-function createFragmentNodes(vdom, parentEl, index) {
+function createFragmentNodes(vdom, parentEl, index, hostComponent) {
 	const { children } = vdom;
 	// el saves a reference to the real DOM node in the virtual node.
 	// This reference is used by the reconciliation algorithm.
 	vdom.el = parentEl;
 
 	children.forEach((child, i) =>
-		mountDOM(child, parentEl, index ? index + i : null)
+		mountDOM(child, parentEl, index ? index + i : null, hostComponent)
 	);
 }
 
@@ -116,8 +118,9 @@ function createFragmentNodes(vdom, parentEl, index) {
  * @param {Object} vdom the virtual DOM node of type "element"
  * @param {HTMLElement} parentEl the host element to mount the virtual DOM node to
  * @param {number} index
+ * @param {import('./component').Component} [hostComponent] The component that the listeners are added to
  */
-function createElementNode(vdom, parentEl, index) {
+function createElementNode(vdom, parentEl, index, hostComponent) {
 	// The virtual DOM representation of a node like this:
 	// {
 	// 	type: DOM_TYPES.ELEMENT,
@@ -152,13 +155,13 @@ function createElementNode(vdom, parentEl, index) {
 
 	// 2. Add the attributes and event listeners to the element node,
 	// saving the added event listeners in a new property of the virtual node, called listeners.
-	addProps(element, props, vdom);
+	addProps(element, props, vdom, hostComponent);
 
 	// 3. Save a reference to the element node in the virtual node.
 	vdom.el = element;
 
 	// 4. Mount the children, recursively, into the element node
-	children.forEach((child) => mountDOM(child, element));
+	children.forEach((child) => mountDOM(child, element, null, hostComponent));
 
 	// 5. Insert the element node to the parent element.
 	insert(element, parentEl, index);
@@ -172,12 +175,13 @@ function createElementNode(vdom, parentEl, index) {
  * @param {Object} props the one contains the attributes and event listeners, like `class`,
  *                       `style`, `on`.
  * @param {Object} vdom the virtual DOM node of type "element"
+ * @param {import('./component').Component} [hostComponent] The component that the listeners are added to
  */
-function addProps(el, props, vdom) {
+function addProps(el, props, vdom, hostComponent) {
 	// Get all event listeners and other attributes.
 	const { on: events, ...attrs } = props;
 	// Add event listeners to the element node.
-	vdom.listeners = addEventListeners(events, el);
+	vdom.listeners = addEventListeners(events, el, hostComponent);
 	// Add the attributes to the element node.
 	setAttributes(el, attrs);
 }
