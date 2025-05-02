@@ -27,9 +27,10 @@ import { isNotBlankOrEmptyString } from './utils/strings';
  * @param {import('./h').VNode} oldVdom the old virtual dom
  * @param {import('./h').VNode} newVdom the new virtual dom
  * @param {Node} parentEl the parent element
+ * * @param {import('./component').Component} [hostComponent] The component that the listeners are added to
  * @returns {Element} the patched element
  */
-export function patchDOM(oldVdom, newVdom, parentEl) {
+export function patchDOM(oldVdom, newVdom, parentEl, hostComponent = null) {
 	if (!areNodesEqual(oldVdom, newVdom)) {
 		const index = findIndexInParent(parentEl, oldVdom.el);
 		destroyDOM(oldVdom);
@@ -52,7 +53,7 @@ export function patchDOM(oldVdom, newVdom, parentEl) {
 		}
 	}
 
-	patchChildren(oldVdom, newVdom);
+	patchChildren(oldVdom, newVdom, hostComponent);
 
 	return newVdom;
 }
@@ -251,8 +252,9 @@ function patchEvents(el, oldListeners = {}, oldEvents = {}, newEvents = {}) {
  *
  * @param {import('./h').VNode} oldVdom The old virtual node
  * @param {import('./h').VNode} newVdom the new virtual node
+ * @param {import('./component').Component} [hostComponent] The component that the listeners are added to
  */
-function patchChildren(oldVdom, newVdom) {
+function patchChildren(oldVdom, newVdom, hostComponent) {
 	const oldChildren = extractChildren(oldVdom);
 	const newChildren = extractChildren(newVdom);
 	const parentEl = oldVdom.el;
@@ -261,10 +263,11 @@ function patchChildren(oldVdom, newVdom) {
 
 	for (const operation of diffSeq) {
 		const { originalIndex, index, item } = operation;
+		const offset = hostComponent?.offset ?? 0;
 
 		switch (operation.op) {
 			case ARRAY_DIFF_OP.ADD: {
-				mountDOM(item, parentEl, index);
+				mountDOM(item, parentEl, index + offset, hostComponent);
 				break;
 			}
 
@@ -280,18 +283,23 @@ function patchChildren(oldVdom, newVdom) {
 				// Gets the DOM element associated with the moved node
 				const el = oldChild.el;
 				// Finds the element at the target index inside the parent element
-				const elAtTargetIndex = parentEl.childNodes[index];
+				const elAtTargetIndex = parentEl.childNodes[index + offset];
 
 				// Inserts the moved element before the target element
 				parentEl.insertBefore(el, elAtTargetIndex);
 				// Recursively patches the moved element
-				patchDOM(oldChild, newChild, parentEl);
+				patchDOM(oldChild, newChild, parentEl, hostComponent);
 
 				break;
 			}
 
 			case ARRAY_DIFF_OP.NOOP: {
-				patchDOM(oldChildren[originalIndex], newChildren[index], parentEl);
+				patchDOM(
+					oldChildren[originalIndex],
+					newChildren[index],
+					parentEl,
+					hostComponent
+				);
 				break;
 			}
 		}
