@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Cocktail</title>
+	</head>
+	<body>
+		<div id="app"></div>
+
+		<script type="module">
+			import {
+				defineComponent,
+				hFragment,
+				h,
+			} from '../packages/runtime/dist/turbie.js';
+
+			const Cocktail = defineComponent({
+				render() {
+					const { loading, cocktailName, prepareInstruct, img } = this.state;
+
+					if (!cocktailName) {
+						return hFragment([
+							h('h1', {}, ['Random Cocktail']),
+							h('button', { on: { click: this.getCocktail } }, [
+								'Get a cocktail',
+							]),
+						]);
+					}
+
+					return loading
+						? h('p', {}, ['loading....'])
+						: hFragment([
+								h('h1', {}, [`${cocktailName}`]),
+								h('p', {}, [`${prepareInstruct}`]),
+								h('img', { src: `${img}` }),
+								h('button', { on: { click: this.getCocktail } }, [
+									'Get Another Cocktail',
+								]),
+						  ]);
+				},
+				state(props) {
+					return {
+						loading: false,
+						cocktailName: null,
+						prepareInstruct: null,
+						img: null,
+					};
+				},
+				async getCocktail() {
+					console.log('getting cocktail');
+					this.updateState({ loading: true });
+
+					const response = await fetch(
+						'https://www.thecocktaildb.com/api/json/v1/1/random.php'
+					);
+
+					const data = await response.json();
+
+					const drink = data.drinks[0];
+					const { strDrink, strInstructions, strDrinkThumb } = drink;
+
+					this.updateState({
+						loading: false,
+						cocktailName: strDrink,
+						prepareInstruct: strInstructions,
+						img: strDrinkThumb,
+					});
+				},
+			});
+
+			const cocktail = new Cocktail();
+			cocktail.mount(document.getElementById('app'));
+		</script>
+	</body>
+</html>
