@@ -4,11 +4,22 @@
  * @param {string} eventName the name of the event to listen to
  * @param {(event: Event) => void} handler the event handler
  * @param {EventTarget} el the element to add the event listener to
+ * @param {import('./component').Component} [hostComponent] The component that the listeners are added to
  * @returns {(event: Event) => void} the event handler
  */
-export function addEventListener(eventName, handler, el) {
-	el.addEventListener(eventName, handler);
-	return handler;
+export function addEventListener(eventName, handler, el, hostComponent = null) {
+	// el.addEventListener(eventName, handler);
+
+	function boundHandler() {
+		// If a host component exists, binds it to the event handler context
+		hostComponent
+			? handler.apply(hostComponent, arguments)
+			: handler(...arguments);
+	}
+
+	el.addEventListener(eventName, boundHandler);
+
+	return boundHandler;
 }
 
 /**
@@ -17,13 +28,14 @@ export function addEventListener(eventName, handler, el) {
  *
  * @param {object} listeners The event listeners to add
  * @param {EventTarget} el The element to add the listeners to
+ * @param {import('./component').Component} [hostComponent] The component that the listeners are added to
  * @returns {object} The added listeners
  */
-export function addEventListeners(listeners = {}, el) {
+export function addEventListeners(listeners = {}, el, hostComponent = null) {
 	const addedListeners = {};
 
 	Object.entries(listeners).forEach(([eventName, handler]) => {
-		const listener = addEventListener(eventName, handler, el);
+		const listener = addEventListener(eventName, handler, el, hostComponent);
 		addedListeners[eventName] = listener;
 	});
 
