@@ -5,13 +5,14 @@ export const DOM_TYPES = {
 	TEXT: 'text',
 	ELEMENT: 'element',
 	FRAGMENT: 'fragment',
+	COMPONENT: 'component',
 };
 
 /**
  * A virtual node is an object representing a DOM element.
  * The virtual node can be a text node, an element node or a fragment node.
  * @typedef VNode
- * @type {TextVNode|ElementVNode|FragmentVNode}
+ * @type {TextVNode|ElementVNode|FragmentVNode|ComponentVNode}
  */
 
 /**
@@ -34,6 +35,14 @@ export const DOM_TYPES = {
  */
 
 /**
+ * @typedef ComponentVNode
+ * @type {object}
+ * @property {import('./component').Component} tag - The reference to the component.
+ * @property {string} type - The type of the virtual node = 'component'.
+ * @property {any} props - The props of the component.
+ */
+
+/**
  * Hypertext function: creates a virtual node representing an element with
  * the passed in tag.
  *
@@ -46,17 +55,20 @@ export const DOM_TYPES = {
  * The children are added to the element as child nodes.
  * If a child is a string, it is converted to a text node using `hString()`.
  *
- * @param {string} tag the tag name of the element
+ * @param {string | Function} tag the tag name of the element
  * @param {object} props the props to add to the element
  * @param {array} children the children to add to the element
  * @returns {ElementVNode} the virtual node
  */
 export function h(tag, props = {}, children = []) {
+	const type =
+		typeof tag === 'string' ? DOM_TYPES.ELEMENT : DOM_TYPES.COMPONENT;
+
 	return {
 		tag,
 		props,
+		type,
 		children: mapTextNodes(withoutNulls(children)),
-		type: DOM_TYPES.ELEMENT,
 	};
 }
 
