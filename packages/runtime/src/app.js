@@ -1,92 +1,56 @@
-import { destroyDOM } from './destroy-dom';
-import { Dispatcher } from './dispatcher';
 import { mountDOM } from './mount-dom';
-import { patchDOM } from './patch-dom';
+import { destroyDOM } from './destroy-dom';
+import { h } from './h';
 
 /**
- * Creates an application with the given top-level view, initial state and reducers.
- * A reducer is a function that takes the current state and a payload and returns
- * the new state.
+ * @typedef Application
+ * @type {object}
  *
- * @param {object} config the configuration object, containing the view, reducers and initial state
- * @returns {object} the app object
+ * @property {(parentEl: HTMLElement) => void} mount - Mounts the application into the DOM.
+ * @property {function} unmount - Unmounts the application from the DOM.
  */
-export function createApp({ state, view, reducers = {} }) {
+
+/**
+ * Creates an application with the given root component (the top-level component in the view tree).
+ * When the application is mounted, the root component is instantiated with the given props
+ * and mounted into the DOM.
+ *
+ * @param {import('./component').Component} RootComponent the top-level component of the application's view tree
+ * @param {Object.<string, Any>} props the top-level component's props
+ *
+ * @returns {Application} the app object
+ */
+export function createApp(RootComponent, props = {}) {
 	let parentEl = null;
-	let vdom = null;
 	let isMounted = false;
+	let vdom = null;
 
-	// Instance of the Dispatcher
-	const dispatcher = new Dispatcher();
-	// Subscribes the renderApp() function to be an after-command handler,
-	// so that the application is re-rendered after every command is handled.
-	const subscriptions = [dispatcher.afterEveryCommand(renderApp)];
-
-	function emit(eventName, payload) {
-		dispatcher.dispatch(eventName, payload);
-	}
-
-	// Attach reducers
-	// Reducer = f(state, payload) => state
-	// Reducer is an object which maps command names to reducer functions
-	for (const actionName in reducers) {
-		const reducer = reducers[actionName];
-		const subs = dispatcher.subscribe(actionName, (payload) => {
-			// Takes the current state and the command's payload and return a new state
-			state = reducer(state, payload);
-		});
-		subscriptions.push(subs);
-	}
-
-	/**
-	 * Renders the application by patching DOM every time the state changes.
-	 */
-	function renderApp() {
-		const newVdom = view(state, emit);
-		vdom = patchDOM(vdom, newVdom, parentEl);
+	function reset() {
+		parentEl = null;
+		isMounted = false;
+		vdom = null;
 	}
 
 	return {
-		/**
-		 * Mounts the application to the given host element.
-		 * Mounting happens only once.
-		 *
-		 * @param {Element} _parentEl the host element to mount the virtual DOM node to
-		 * @returns {object} the application object
-		 */
 		mount(_parentEl) {
 			if (isMounted) {
-				throw new Error('The application has already been mounted!');
+				throw new Error('The application is already mounted');
 			}
+
 			parentEl = _parentEl;
-			vdom = view(state, emit);
+			vdom = h(RootComponent, props);
 			mountDOM(vdom, parentEl);
 
 			isMounted = true;
-
-			return this;
 		},
 
-		/**
-		 * Unmounts the application from the host element by destroying the associated
-		 * DOM and unsubscribing all subscriptions.
-		 */
 		unmount() {
+			if (!isMounted) {
+				throw new Error('The application is not mounted');
+			}
+
 			destroyDOM(vdom);
-			vdom = null;
-			subscriptions.forEach((unsubscribe) => unsubscribe());
-
-			isMounted = false;
-		},
-
-		/**
-		 * Emits an event to the application.
-		 *
-		 * @param {string} eventName the name of the event to emit
-		 * @param {any} payload the payload to pass to the event listeners
-		 */
-		emit(eventName, payload) {
-			emit(eventName, payload);
+			reset();
 		},
 	};
 }
