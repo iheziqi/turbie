@@ -178,14 +178,14 @@ function createElementNode(vdom, parentEl, index, hostComponent) {
 	// 		},
 	// 	],
 	// };
-	const { tag, props, children } = vdom;
+	const { tag, children } = vdom;
 
 	// 1. Create the element node using the document.createElement() function.
 	const element = document.createElement(tag);
 
 	// 2. Add the attributes and event listeners to the element node,
 	// saving the added event listeners in a new property of the virtual node, called listeners.
-	addProps(element, props, vdom, hostComponent);
+	addProps(element, vdom, hostComponent);
 
 	// 3. Save a reference to the element node in the virtual node.
 	vdom.el = element;
@@ -207,9 +207,9 @@ function createElementNode(vdom, parentEl, index, hostComponent) {
  * @param {Object} vdom the virtual DOM node of type "element"
  * @param {import('./component').Component} [hostComponent] The component that the listeners are added to
  */
-function addProps(el, props, vdom, hostComponent) {
+function addProps(el, vdom, hostComponent) {
 	// Get all event listeners and other attributes.
-	const { on: events, ...attrs } = props;
+	const { props: attrs, events } = extractPropsAndEvents(vdom);
 	// Add event listeners to the element node.
 	vdom.listeners = addEventListeners(events, el, hostComponent);
 	// Add the attributes to the element node.

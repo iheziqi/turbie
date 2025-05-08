@@ -14,6 +14,7 @@
  */
 export function extractPropsAndEvents(vdom) {
 	const { on: events = {}, ...props } = vdom.props;
+	delete props.keys;
 
 	return { props, events };
 }

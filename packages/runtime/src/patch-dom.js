@@ -12,6 +12,7 @@ import { areNodesEqual } from './nodes-equal';
 import { arraysDiff, arraysDiffSequence, ARRAY_DIFF_OP } from './utils/arrays';
 import { objectsDiff } from './utils/objects';
 import { isNotBlankOrEmptyString } from './utils/strings';
+import { extractPropsAndEvents } from './utils/props';
 
 /**
  * Patches the DOM by comparing the `oldVdom` and `newVdom` virtual nodes and
@@ -49,6 +50,11 @@ export function patchDOM(oldVdom, newVdom, parentEl, hostComponent = null) {
 
 		case DOM_TYPES.ELEMENT: {
 			patchElement(oldVdom, newVdom, hostComponent);
+			break;
+		}
+
+		case DOM_TYPES.COMPONENT: {
+			patchComponent(oldVdom, newVdom);
 			break;
 		}
 	}
@@ -254,6 +260,27 @@ function patchEvents(
 	}
 
 	return addedListeners;
+}
+
+/**
+ * Patches a component virtual node.
+ *
+ * To patch a component, the new props are passed to the component's `updateProps()`.
+ * This method is responsible for updating the component's state and re-rendering
+ * the component. Calling `updateProps()` will cause call the component's `#patch()`
+ * method, which will in turn use the `patchDOM()` function to patch the DOM.
+ *
+ * @param {import('./h').ComponentVNode} oldVdom the old virtual node
+ * @param {import('./h').ComponentVNode} newVdom the new virtual node
+ */
+function patchComponent(oldVdom, newVdom) {
+	const { component } = oldVdom;
+	const { props } = extractPropsAndEvents(newVdom);
+
+	component.updateProps(props);
+
+	newVdom.component = component;
+	newVdom.el = component.firstElement;
 }
 
 /**
