@@ -7,7 +7,7 @@ import { removeEventListeners } from './events';
  * Removes all `el` references from the vdom tree and removes all the event
  * listeners from the DOM.
  *
- * @param {Object} vdom the virtual DOM node to destroy
+ * @param {import('./h').VNode} vdom the virtual DOM node to destroy
  */
 export function destroyDOM(vdom) {
 	const { type } = vdom;
@@ -21,6 +21,9 @@ export function destroyDOM(vdom) {
 			break;
 		case DOM_TYPES.FRAGMENT:
 			removeFragmentNodes(vdom);
+			break;
+		case DOM_TYPES.COMPONENT:
+			vdom.component.unmount();
 			break;
 		default:
 			throw new Error(`Can't destroy DOM of type: ${type}`);

@@ -1,6 +1,7 @@
 import { DOM_TYPES } from './h';
 import { addEventListeners } from './events';
 import { setAttributes } from './attributes';
+import { extractPropsAndEvents } from './utils/props';
 
 /**
  * Inserts an element into the given parent element at the given index.
@@ -40,7 +41,6 @@ function insert(el, parentEl, index) {
  * @param {number} index the index at which the node is inserted into the parent element.
  * @param {import('./component').Component} [hostComponent] The component that the listeners are added to
  */
-
 export function mountDOM(vdom, parentEl, index, hostComponent = null) {
 	switch (vdom.type) {
 		case DOM_TYPES.TEXT:
@@ -51,6 +51,9 @@ export function mountDOM(vdom, parentEl, index, hostComponent = null) {
 			break;
 		case DOM_TYPES.FRAGMENT:
 			createFragmentNodes(vdom, parentEl, index, hostComponent);
+			break;
+		case DOM_TYPES.COMPONENT:
+			createComponentNode(vdom, parentEl, index, hostComponent);
 			break;
 		default:
 			throw new Error(`Can't mount DOM of type: ${vdom.type}`);
@@ -106,6 +109,33 @@ function createFragmentNodes(vdom, parentEl, index, hostComponent) {
 	children.forEach((child, i) =>
 		mountDOM(child, parentEl, index ? index + i : null, hostComponent)
 	);
+}
+
+/**
+ * Creates the component node, and all of its subcomponents recursively.
+ *
+ * The created `Component` is added to the `component` property of the vdom.
+ * The created `Element` is added to the `el` property of the vdom. If the component
+ * has a fragment, and thus several top-level elements, the first one is added to the `el`.
+ *
+ * The use case for the `el` reference is the reconciliation algorithm. In the case of
+ * a component, it's sole use is to move a component to a different position using the
+ * `insertBefore()` method. To insert an element before a component, the `el` property
+ * points at the component's first element.
+ *
+ * @param {import('./h').ComponentVNode} vdom the virtual DOM node of type "fragment"
+ * @param {Element} parentEl the host element to mount the virtual DOM node to
+ * @param {number} [index] the index at the parent element to mount the virtual DOM node to
+ * @param {import('./component').Component} [hostComponent] The component that the listeners are added to
+ */
+function createComponentNode(vdom, parentEl, index, hostComponent) {
+	const Component = vdom.tag;
+	const { props, events } = extractPropsAndEvents(vdom);
+	const component = new Component(props, events, hostComponent);
+
+	component.mount(parentEl, index);
+	vdom.component = component;
+	vdom.el = component.firstElement;
 }
 
 /**
