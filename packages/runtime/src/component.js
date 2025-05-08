@@ -3,6 +3,7 @@ import { destroyDOM } from './destroy-dom';
 import { patchDOM } from './patch-dom';
 import { DOM_TYPES, extractChildren } from './h';
 import { hasOwnProperty } from './utils/objects';
+import { Dispatcher } from './dispatcher';
 
 /**
  * @typedef Component
@@ -37,10 +38,16 @@ export function defineComponent({ render, state, ...methods }) {
 		 */
 		#vdom = null;
 		#hostEl = null;
+		#eventHandlers = null;
+		#parentComponent = null;
+		#dispatcher = new Dispatcher();
+		#subscriptions = [];
 
-		constructor(props) {
+		constructor(props = {}, eventHandler = {}, parentComponent = null) {
 			this.props = props;
 			this.state = state ? state(props) : {};
+			this.#eventHandlers = eventHandler;
+			this.#parentComponent = parentComponent;
 		}
 
 		get elements() {
@@ -48,9 +55,15 @@ export function defineComponent({ render, state, ...methods }) {
 				return [];
 			}
 
-			// If the vdom top node is a fragment, returns the elements inside the fragment
-			if (this.#vdom.type === DOM_TYPES.FRAGMENT) {
-				return extractChildren(this.#vdom).map((child) => child.el);
+			// If the vdom top node is a component, returns the elements inside the component
+			if (this.#vdom.type === DOM_TYPES.COMPONENT) {
+				return extractChildren(this.#vdom).flatMap((child) => {
+					if (child.type === DOM_TYPES.COMPONENT) {
+						return child.component.elements;
+					}
+
+					return [child.el];
+				});
 			}
 
 			// If the vdom top node is a single node, returns its element
@@ -74,6 +87,11 @@ export function defineComponent({ render, state, ...methods }) {
 			this.#patch();
 		}
 
+		updateProps(props) {
+			this.props = { ...this.props, ...props };
+			this.#patch;
+		}
+
 		render() {
 			// Since the render function is passed from outside, it needs to be bound to the component
 			// to have access to this.state and other component variables.
@@ -87,9 +105,31 @@ export function defineComponent({ render, state, ...methods }) {
 
 			this.#vdom = this.render();
 			mountDOM(this.#vdom, hostEl, index, this);
+			this.#wireEventHandlers();
 
 			this.#hostEl = hostEl;
 			this.#isMounted = true;
+		}
+
+		#wireEventHandlers() {
+			this.#subscriptions = Object.entries(this.#eventHandlers).map(
+				([eventName, handler]) => {
+					this.#wireEventHandler(eventName, handler);
+				}
+			);
+		}
+
+		#wireEventHandler(eventName, handler) {
+			return this.#dispatcher.subscribe(eventName, (payload) => {
+				if (this.#parentComponent) {
+					// If there is a parent component, binds the event handler's context to it and calls it
+					// You need to bind the event handler's context to the parent component instance because
+					// the event handler is defined in the parent component, and you want to call it with the parent component instance as its context.
+					handler.call(this.#parentComponent, payload);
+				} else {
+					handler(payload);
+				}
+			});
 		}
 
 		unmount() {
@@ -97,10 +137,22 @@ export function defineComponent({ render, state, ...methods }) {
 				throw new Error('Component is not mounted yet!');
 			}
 			destroyDOM(this.#vdom);
+			this.#subscriptions.forEach((unsubscribe) => unsubscribe());
 
 			this.#vdom = null;
 			this.#hostEl = null;
 			this.mountDOM = false;
+			this.#subscriptions = [];
+		}
+
+		/**
+		 * Emits an event to the parent component.
+		 *
+		 * @param {string} eventName The name of the event to emit
+		 * @param {Any} [payload] The payload to pass to the event handler
+		 */
+		emit(eventName, payload) {
+			this.#dispatcher.dispatch(eventName, payload);
 		}
 
 		#patch() {
